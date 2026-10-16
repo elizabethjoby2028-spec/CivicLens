@@ -60,8 +60,12 @@ load_env(ROOT_PATH . '/.env');
 define('APP_NAME', env('APP_NAME', 'CivicLens'));
 define('APP_TAGLINE', env('APP_TAGLINE', 'Report. Track. Resolve.'));
 define('APP_ENV', env('APP_ENV', 'development'));
-define('APP_DEBUG', (bool)env('APP_DEBUG', true));
-define('APP_URL', rtrim(env('APP_URL', 'http://localhost/CivicLens'), '/'));
+$configuredUrl = env('APP_URL', 'http://localhost/CivicLens');
+if (isset($_SERVER['HTTP_HOST']) && strpos($configuredUrl, 'localhost') !== false && $_SERVER['HTTP_HOST'] !== 'localhost' && $_SERVER['HTTP_HOST'] !== '127.0.0.1') {
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
+    $configuredUrl = $protocol . $_SERVER['HTTP_HOST'] . '/CivicLens';
+}
+define('APP_URL', rtrim($configuredUrl, '/'));
 define('ANONYMOUS_COMPLAINT_FEE', (float)env('ANONYMOUS_COMPLAINT_FEE', 9.00));
 define('AUTHORITY_SUBSCRIPTION_PRICE', (float)env('AUTHORITY_SUBSCRIPTION_PRICE', 5000.00));
 
