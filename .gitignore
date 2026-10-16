@@ -1,0 +1,39 @@
+# Environment configuration
+.env
+.env.local
+.env.*.local
+
+# Sensitive uploads (keep directory structure with .gitkeep)
+uploads/complaints/*
+!uploads/complaints/.gitkeep
+uploads/ads/*
+!uploads/ads/.gitkeep
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Operating system files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.gemini/
+.agents/
+
+# Database dumps containing personal or secret data
+*.sql.gz
+*.sql.bak
+*.dump
