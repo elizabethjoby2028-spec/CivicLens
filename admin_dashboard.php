@@ -86,18 +86,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Global Statistics
-$stats_stmt = $db->query("
-    SELECT 
-        COUNT(*) as total_complaints,
-        SUM(CASE WHEN status = 'Opened' THEN 1 ELSE 0 END) as opened,
-        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
-        SUM(CASE WHEN status = 'Solved' THEN 1 ELSE 0 END) as solved,
-        SUM(CASE WHEN status = 'Reopened' THEN 1 ELSE 0 END) as reopened,
-        SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed,
-        SUM(CASE WHEN is_anonymous = 1 THEN 1 ELSE 0 END) as anonymous_count
-    FROM complaints
-");
+// Category Scope Check
+$admin_category = $admin['category'] ?? null;
+$is_superadmin = ($admin['role'] === 'superadmin' || empty($admin_category));
+
+// Fetch Statistics (Global or Category-scoped)
+if ($admin_category) {
+    $stats_stmt = $db->prepare("
+        SELECT 
+            COUNT(*) as total_complaints,
+            SUM(CASE WHEN status = 'Opened' THEN 1 ELSE 0 END) as opened,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+            SUM(CASE WHEN status = 'Solved' THEN 1 ELSE 0 END) as solved,
+            SUM(CASE WHEN status = 'Reopened' THEN 1 ELSE 0 END) as reopened,
+            SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed,
+            SUM(CASE WHEN is_anonymous = 1 THEN 1 ELSE 0 END) as anonymous_count
+        FROM complaints
+        WHERE category = ?
+    ");
+    $stats_stmt->execute([$admin_category]);
+} else {
+    $stats_stmt = $db->query("
+        SELECT 
+            COUNT(*) as total_complaints,
+            SUM(CASE WHEN status = 'Opened' THEN 1 ELSE 0 END) as opened,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+            SUM(CASE WHEN status = 'Solved' THEN 1 ELSE 0 END) as solved,
+            SUM(CASE WHEN status = 'Reopened' THEN 1 ELSE 0 END) as reopened,
+            SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed,
+            SUM(CASE WHEN is_anonymous = 1 THEN 1 ELSE 0 END) as anonymous_count
+        FROM complaints
+    ");
+}
 $stats = $stats_stmt->fetch();
 
 // Total Revenue from Payment Orders
@@ -111,14 +131,26 @@ $rev_stmt = $db->query("
 $revenue = $rev_stmt->fetch();
 
 // Reopened complaints requiring administrative review
-$reopened_stmt = $db->query("
-    SELECT c.*, a.department as authority_dept, a.official_name as authority_official
-    FROM complaints c
-    LEFT JOIN authorities a ON c.assigned_authority_id = a.id
-    WHERE c.status = 'Reopened'
-    ORDER BY c.updated_at DESC
-    LIMIT 10
-");
+if ($admin_category) {
+    $reopened_stmt = $db->prepare("
+        SELECT c.*, a.department as authority_dept, a.official_name as authority_official
+        FROM complaints c
+        LEFT JOIN authorities a ON c.assigned_authority_id = a.id
+        WHERE c.status = 'Reopened' AND c.category = ?
+        ORDER BY c.updated_at DESC
+        LIMIT 10
+    ");
+    $reopened_stmt->execute([$admin_category]);
+} else {
+    $reopened_stmt = $db->query("
+        SELECT c.*, a.department as authority_dept, a.official_name as authority_official
+        FROM complaints c
+        LEFT JOIN authorities a ON c.assigned_authority_id = a.id
+        WHERE c.status = 'Reopened'
+        ORDER BY c.updated_at DESC
+        LIMIT 10
+    ");
+}
 $reopened_complaints = $reopened_stmt->fetchAll();
 
 // Complaints Filtering & Search
@@ -136,7 +168,10 @@ $complaints_query = "
 ";
 $params = [];
 
-if (!empty($category_filter)) {
+if ($admin_category) {
+    $complaints_query .= " AND c.category = ?";
+    $params[] = $admin_category;
+} elseif (!empty($category_filter)) {
     $complaints_query .= " AND c.category = ?";
     $params[] = $category_filter;
 }
@@ -192,12 +227,24 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Admin Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
         <div>
-            <h2 style="font-size: 1.85rem; color: var(--primary-navy); margin-bottom: 0.25rem;">
-                🛡️ CivicLens Administration Suite
-            </h2>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">
-                Welcome, <strong><?= e($admin['name']) ?></strong> (<?= e($admin['role']) ?>) &bull; City-Wide Municipal Oversight
-            </p>
+            <?php if ($admin_category): ?>
+                <span class="badge badge-primary" style="margin-bottom: 0.35rem; font-size: 0.82rem; background: var(--primary-light); color: #fff;">
+                    🏷️ <?= e($admin_category) ?> Department Portal
+                </span>
+                <h2 style="font-size: 1.85rem; color: var(--primary-navy); margin-bottom: 0.25rem;">
+                    🛡️ <?= e($admin_category) ?> Works & Issue Resolution
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Admin: <strong><?= e($admin['name']) ?></strong> &bull; Tracking & Resolving All <strong><?= e($admin_category) ?></strong> Complaints
+                </p>
+            <?php else: ?>
+                <h2 style="font-size: 1.85rem; color: var(--primary-navy); margin-bottom: 0.25rem;">
+                    🛡️ CivicLens Central Administration Suite
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Welcome, <strong><?= e($admin['name']) ?></strong> (Superadmin) &bull; City-Wide Municipal Oversight (All Categories)
+                </p>
+            <?php endif; ?>
         </div>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -292,7 +339,9 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Master Complaints Management -->
     <div class="card" style="margin-bottom: 2.5rem; padding: 0; overflow: hidden;">
         <div class="card-header" style="padding: 1.25rem 1.5rem;">
-            <h3 class="card-title">All Civic Complaints (<?= count($complaints_list) ?>)</h3>
+            <h3 class="card-title">
+                <?= $admin_category ? '🏷️ ' . e($admin_category) . ' Complaints & Issue Resolution (' . count($complaints_list) . ')' : 'All Civic Complaints (' . count($complaints_list) . ')' ?>
+            </h3>
         </div>
 
         <!-- Filter Bar -->
@@ -303,18 +352,20 @@ require_once __DIR__ . '/includes/header.php';
                     <input type="text" name="q" class="form-control" placeholder="ID, Title, Location..." value="<?= e($search_query) ?>">
                 </div>
 
-                <div style="flex: 1; min-width: 140px;">
-                    <label class="form-label" style="font-size: 0.82rem;">Category</label>
-                    <select name="category" class="form-control">
-                        <option value="">All Categories</option>
-                        <option value="Water" <?= ($category_filter === 'Water') ? 'selected' : '' ?>>Water</option>
-                        <option value="Road" <?= ($category_filter === 'Road') ? 'selected' : '' ?>>Road</option>
-                        <option value="Food" <?= ($category_filter === 'Food') ? 'selected' : '' ?>>Food</option>
-                        <option value="Waste" <?= ($category_filter === 'Waste') ? 'selected' : '' ?>>Waste</option>
-                        <option value="Drugs / Substance Abuse (Thoofan)" <?= ($category_filter === 'Drugs / Substance Abuse (Thoofan)') ? 'selected' : '' ?>>Drugs (Thoofan)</option>
-                        <option value="Other Issues" <?= ($category_filter === 'Other Issues') ? 'selected' : '' ?>>Other Issues</option>
-                    </select>
-                </div>
+                <?php if (!$admin_category): ?>
+                    <div style="flex: 1; min-width: 140px;">
+                        <label class="form-label" style="font-size: 0.82rem;">Category</label>
+                        <select name="category" class="form-control">
+                            <option value="">All Categories</option>
+                            <option value="Water" <?= ($category_filter === 'Water') ? 'selected' : '' ?>>Water</option>
+                            <option value="Road" <?= ($category_filter === 'Road') ? 'selected' : '' ?>>Road</option>
+                            <option value="Food" <?= ($category_filter === 'Food') ? 'selected' : '' ?>>Food</option>
+                            <option value="Waste" <?= ($category_filter === 'Waste') ? 'selected' : '' ?>>Waste</option>
+                            <option value="Drugs / Substance Abuse (Thoofan)" <?= ($category_filter === 'Drugs / Substance Abuse (Thoofan)') ? 'selected' : '' ?>>Drugs (Thoofan)</option>
+                            <option value="Other Issues" <?= ($category_filter === 'Other Issues') ? 'selected' : '' ?>>Other Issues</option>
+                        </select>
+                    </div>
+                <?php endif; ?>
 
                 <div style="flex: 1; min-width: 120px;">
                     <label class="form-label" style="font-size: 0.82rem;">Status</label>
@@ -397,8 +448,8 @@ require_once __DIR__ . '/includes/header.php';
                                     <?= format_date($c['created_at'], 'M d, Y') ?>
                                 </td>
                                 <td>
-                                    <a href="complaint_details.php?id=<?= urlencode($c['complaint_id']) ?>" class="btn btn-outline btn-sm">
-                                        Manage &rarr;
+                                    <a href="complaint_details.php?id=<?= urlencode($c['complaint_id']) ?>" class="btn btn-primary btn-sm">
+                                        Track & Solve &rarr;
                                     </a>
                                 </td>
                             </tr>

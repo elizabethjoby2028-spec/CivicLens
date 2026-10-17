@@ -37,10 +37,18 @@ function current_admin_id() {
     return isset($_SESSION['admin_id']) ? (int)$_SESSION['admin_id'] : null;
 }
 
+function current_admin_category() {
+    return $_SESSION['admin_category'] ?? null;
+}
+
+function is_superadmin() {
+    return ($_SESSION['admin_role'] ?? '') === 'superadmin';
+}
+
 function get_current_admin() {
     if (!is_admin_logged_in()) return null;
     $db = get_db();
-    $stmt = $db->prepare("SELECT id, username, email, name, role, is_active FROM administrators WHERE id = ?");
+    $stmt = $db->prepare("SELECT id, username, email, name, role, category, is_active FROM administrators WHERE id = ?");
     $stmt->execute([current_admin_id()]);
     return $stmt->fetch();
 }

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `administrators` (
     `name` VARCHAR(100) NOT NULL,
     `password_hash` VARCHAR(255) NOT NULL,
     `role` ENUM('superadmin', 'admin') DEFAULT 'admin',
+    `category` VARCHAR(100) NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_admin_username` (`username`),

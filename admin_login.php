@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Too many failed administrative login attempts. Please wait 15 minutes before trying again.';
     } else {
         $stmt = $db->prepare("
-            SELECT id, username, email, name, password_hash, role, is_active 
+            SELECT id, username, email, name, password_hash, role, category, is_active 
             FROM administrators 
             WHERE username = ? OR email = ?
         ");
@@ -50,8 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['admin_username'] = $admin['username'];
                 $_SESSION['admin_name'] = $admin['name'];
                 $_SESSION['admin_role'] = $admin['role'];
+                $_SESSION['admin_category'] = $admin['category'];
 
-                flash('success', "Welcome, Administrator {$admin['name']} ({$admin['role']})");
+                $catInfo = !empty($admin['category']) ? " [{$admin['category']} Department]" : " [City-Wide Superadmin]";
+                flash('success', "Welcome, Administrator {$admin['name']}{$catInfo}");
                 redirect('admin_dashboard.php');
             }
         } else {
@@ -118,6 +120,50 @@ require_once __DIR__ . '/includes/header.php';
             Are you a citizen? <a href="<?= url('portal.php') ?>">Citizen Portal</a>
         </div>
     </div>
+
+    <!-- Category Admin Quick Credentials -->
+    <div class="card" style="margin-top: 1.5rem; background: var(--bg-surface-alt); border: 1px solid var(--border-color);">
+        <h4 style="font-size: 0.95rem; color: var(--primary-navy); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+            <span>📋 Category Admin Accounts (Click to Fill)</span>
+        </h4>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem; font-size: 0.82rem;">
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_water', 'Water@admin2026')">
+                <span>💧 <strong>Water Works Admin</strong> (`admin_water`)</span>
+                <span style="color: var(--text-muted);">Water@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_road', 'Road@admin2026')">
+                <span>🛣️ <strong>Roads & Infrastructure</strong> (`admin_road`)</span>
+                <span style="color: var(--text-muted);">Road@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_food', 'Food@admin2026')">
+                <span>🍽️ <strong>Food Safety Department</strong> (`admin_food`)</span>
+                <span style="color: var(--text-muted);">Food@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_waste', 'Waste@admin2026')">
+                <span>🗑️ <strong>Solid Waste Management</strong> (`admin_waste`)</span>
+                <span style="color: var(--text-muted);">Waste@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_thoofan', 'Thoofan@admin2026')">
+                <span>🚨 <strong>Anti-Narcotics (Thoofan)</strong> (`admin_thoofan`)</span>
+                <span style="color: var(--text-muted);">Thoofan@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff;" onclick="fillCreds('admin_other', 'Other@admin2026')">
+                <span>🏛️ <strong>General Civic Admin</strong> (`admin_other`)</span>
+                <span style="color: var(--text-muted);">Other@admin2026 &rarr;</span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" style="text-align: left; display: flex; justify-content: space-between; align-items: center; background: #fff; border-color: var(--primary-navy);" onclick="fillCreds('superadmin', 'Super@admin2026')">
+                <span>🛡️ <strong>Chief Superadmin (All)</strong> (`superadmin`)</span>
+                <span style="color: var(--primary-navy); font-weight: 700;">Super@admin2026 &rarr;</span>
+            </button>
+        </div>
+    </div>
 </div>
+
+<script>
+function fillCreds(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+}
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -206,10 +206,12 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         <?php endif; ?>
 
-        <!-- Authority Status Update Box -->
-        <?php if ($is_authority && $complaint['status'] !== 'Closed'): ?>
+        <!-- Status Update & Solve Box (Admin & Authority) -->
+        <?php if (($is_admin || $is_authority) && $complaint['status'] !== 'Closed'): ?>
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 2rem;">
-                <h4 style="margin-bottom: 1rem; color: var(--navy-blue);">🏛️ Authority Action: Update Status</h4>
+                <h4 style="margin-bottom: 1rem; color: var(--navy-blue);">
+                    <?= $is_admin ? '🛡️ Administrative Action: Resolve / Update Status' : '🏛️ Authority Action: Update Status' ?>
+                </h4>
                 <form method="POST" action="update_status.php">
                     <?= csrf_field() ?>
                     <input type="hidden" name="complaint_id" value="<?= e($complaint['complaint_id']) ?>">
