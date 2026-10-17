@@ -41,3 +41,7 @@ function validate_csrf_or_die() {
         }
     }
 }
+
+function verify_csrf() {
+    validate_csrf_or_die();
+}
