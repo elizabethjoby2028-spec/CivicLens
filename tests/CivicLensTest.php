@@ -32,6 +32,7 @@ class CivicLensTest {
         $this->testTenDayDeadlineCalculation();
         $this->testAdAnalyticsAndCTR();
         $this->testGitIgnoreAndSecretsHygiene();
+        $this->testAutomaticAuthorityRoutingAndBuiltinLogins();
 
         echo "\n------------------------------------------------------\n";
         echo "Results: {$this->passed} Passed, {$this->failed} Failed\n";
@@ -197,6 +198,78 @@ class CivicLensTest {
         $this->assert(file_exists($envExamplePath), '.env.example exists in repository root');
         $envExample = file_get_contents($envExamplePath);
         $this->assert(strpos($envExample, 'rzp_test_') === false || strpos($envExample, 'your_') !== false, '.env.example contains placeholder values without live secrets');
+    }
+
+    /**
+     * Test 7: Automatic Authority Assignment Routing & Built-in Credentials
+     */
+    protected function testAutomaticAuthorityRoutingAndBuiltinLogins(): void {
+        echo "\nRunning: Automatic Authority Routing & Built-in Logins Tests...\n";
+
+        require_once __DIR__ . '/../includes/functions.php';
+        require_once __DIR__ . '/../config.php';
+        require_once __DIR__ . '/../includes/db.php';
+        require_once __DIR__ . '/../includes/PaymentService.php';
+
+        // 1. Validate Category to Authority Mappings
+        $mappings = [
+            'Water Supply & Leakage'             => 'Kerala Water Authority',
+            'Roads & Infrastructure'             => 'Public Works Department',
+            'Solid Waste Management'             => 'Municipal Solid Waste Management',
+            'Food Safety & Hygiene'              => 'Food Safety & Hygiene',
+            'Anti-Narcotics (Operation Thoofan)' => 'Anti-Narcotics',
+            'General / Other Civic Issues'       => 'General Municipal Engineering',
+        ];
+
+        foreach ($mappings as $cat => $expectedDeptSubstr) {
+            $auth = get_authority_for_category($cat);
+            $this->assert(
+                !empty($auth) && strpos($auth['department'], $expectedDeptSubstr) !== false,
+                "Category '{$cat}' automatically resolves to '{$expectedDeptSubstr}'"
+            );
+        }
+
+        // 2. Validate Authority Built-in Password Verification
+        $db = get_db();
+        $authStmt = $db->query("SELECT email, password_hash FROM authorities WHERE is_active = 1 LIMIT 3");
+        $sampleAuthorities = $authStmt->fetchAll();
+        $allAuthVerify = true;
+        foreach ($sampleAuthorities as $a) {
+            if (!password_verify('Authority@2026', $a['password_hash'])) {
+                $allAuthVerify = false;
+            }
+        }
+        $this->assert($allAuthVerify, "Authority accounts authenticate with built-in password 'Authority@2026'");
+
+        // 3. Validate Category Admin Built-in Password Verification
+        $adminStmt = $db->prepare("SELECT username, password_hash FROM administrators WHERE username = ?");
+        $adminStmt->execute(['admin_water']);
+        $waterAdmin = $adminStmt->fetch();
+        $this->assert(
+            $waterAdmin && password_verify('Water@admin2026', $waterAdmin['password_hash']),
+            "Water Admin ('admin_water') authenticates with built-in password 'Water@admin2026'"
+        );
+
+        $adminStmt->execute(['superadmin']);
+        $superAdmin = $adminStmt->fetch();
+        $this->assert(
+            $superAdmin && password_verify('Super@admin2026', $superAdmin['password_hash']),
+            "Superadmin ('superadmin') authenticates with built-in password 'Super@admin2026'"
+        );
+
+        // 4. Validate Sandbox HMAC-SHA256 Signature Generation & Verification
+        $orderId = 'order_sandbox_test123';
+        $payId = 'pay_sandbox_test456';
+        $config = PaymentService::getConfig();
+        $validSignature = hash_hmac('sha256', $orderId . '|' . $payId, $config['key_secret']);
+        $this->assert(
+            PaymentService::verifySignature($orderId, $payId, $validSignature),
+            'PaymentService verifies valid HMAC-SHA256 signature in sandbox mode'
+        );
+        $this->assert(
+            !PaymentService::verifySignature($orderId, $payId, 'tampered_signature_xyz'),
+            'PaymentService rejects tampered or invalid HMAC signature'
+        );
     }
 }
 

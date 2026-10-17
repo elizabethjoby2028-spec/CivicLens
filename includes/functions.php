@@ -39,15 +39,21 @@ function generate_complaint_id() {
  */
 function get_authority_for_category($category) {
     $db = get_db();
-    $map = [
-        'Water' => 1,
-        'Road' => 2,
-        'Waste' => 3,
-        'Food' => 4,
-        'Drugs / Substance Abuse (Thoofan)' => 5,
-        'Other Issues' => 6
-    ];
-    $targetId = $map[$category] ?? 6;
+    $catLower = strtolower(trim((string)$category));
+
+    if (strpos($catLower, 'water') !== false) {
+        $targetId = 1; // Kerala Water Authority
+    } elseif (strpos($catLower, 'road') !== false) {
+        $targetId = 2; // PWD Roads & Bridges
+    } elseif (strpos($catLower, 'waste') !== false || strpos($catLower, 'garbage') !== false) {
+        $targetId = 3; // Solid Waste Management
+    } elseif (strpos($catLower, 'food') !== false || strpos($catLower, 'hygiene') !== false) {
+        $targetId = 4; // Food Safety
+    } elseif (strpos($catLower, 'drug') !== false || strpos($catLower, 'thoofan') !== false || strpos($catLower, 'narcotic') !== false) {
+        $targetId = 5; // Anti-Narcotics
+    } else {
+        $targetId = 6; // General Municipal Engineering
+    }
 
     $stmt = $db->prepare("SELECT id, department, official_name, email FROM authorities WHERE id = ? AND is_active = 1");
     $stmt->execute([$targetId]);
@@ -57,8 +63,7 @@ function get_authority_for_category($category) {
     }
 
     // Dynamic search fallback
-    $fallback = $db->query("SELECT id, department, official_name, email FROM authorities WHERE is_active = 1 ORDER BY id ASC LIMIT 1")->fetch();
-    return $fallback;
+    return $db->query("SELECT id, department, official_name, email FROM authorities WHERE is_active = 1 ORDER BY id ASC LIMIT 1")->fetch();
 }
 
 /**
