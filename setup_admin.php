@@ -6,23 +6,12 @@
  */
 
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/functions.php';
-require_once __DIR__ . '/includes/lang.php';
 
-$db = get_db();
-$admin_count = (int)$db->query("SELECT COUNT(*) FROM administrators")->fetchColumn();
-
-// If admins already exist, enforce active admin authentication
-if ($admin_count > 0 && !is_admin_logged_in()) {
-    flash('info', 'Administrator accounts have already been provisioned. Please log in with your administrative credentials.');
-    redirect('admin_login.php');
-}
-
-$error = '';
-$success = '';
+flash('info', 'Administrator self-registration is disabled. Please use the built-in administrator credentials provided on the login page.');
+redirect('admin_login.php');
+exit;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_csrf_or_die();

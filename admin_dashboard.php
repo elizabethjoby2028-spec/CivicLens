@@ -251,9 +251,6 @@ require_once __DIR__ . '/includes/header.php';
             <a href="<?= url('admin_ads.php') ?>" class="btn btn-outline btn-sm">
                 💼 Moderation & Ads
             </a>
-            <a href="<?= url('setup_admin.php') ?>" class="btn btn-secondary btn-sm">
-                + Add Administrator
-            </a>
         </div>
     </div>
 

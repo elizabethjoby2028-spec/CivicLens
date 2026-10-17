@@ -35,6 +35,33 @@ function generate_complaint_id() {
 }
 
 /**
+ * Get matching authority for a civic complaint category
+ */
+function get_authority_for_category($category) {
+    $db = get_db();
+    $map = [
+        'Water' => 1,
+        'Road' => 2,
+        'Waste' => 3,
+        'Food' => 4,
+        'Drugs / Substance Abuse (Thoofan)' => 5,
+        'Other Issues' => 6
+    ];
+    $targetId = $map[$category] ?? 6;
+
+    $stmt = $db->prepare("SELECT id, department, official_name, email FROM authorities WHERE id = ? AND is_active = 1");
+    $stmt->execute([$targetId]);
+    $auth = $stmt->fetch();
+    if ($auth) {
+        return $auth;
+    }
+
+    // Dynamic search fallback
+    $fallback = $db->query("SELECT id, department, official_name, email FROM authorities WHERE is_active = 1 ORDER BY id ASC LIMIT 1")->fetch();
+    return $fallback;
+}
+
+/**
  * Generate a strong random anonymous tracking credential
  */
 function generate_tracking_credential() {

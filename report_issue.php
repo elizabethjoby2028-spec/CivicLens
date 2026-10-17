@@ -65,10 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->beginTransaction();
 
             // Insert complaint record
+            // Automatically route and assign to respective municipal authority based on category
+            $assigned_authority = get_authority_for_category($category);
+            $assigned_authority_id = $assigned_authority ? (int)$assigned_authority['id'] : null;
+
             $stmt = $db->prepare("
                 INSERT INTO complaints 
-                (complaint_id, citizen_id, is_anonymous, category, title, description, location, photo_path, status, priority)
-                VALUES (?, ?, 0, ?, ?, ?, ?, ?, 'Opened', 'Medium')
+                (complaint_id, citizen_id, is_anonymous, category, title, description, location, photo_path, status, priority, assigned_authority_id, assigned_at)
+                VALUES (?, ?, 0, ?, ?, ?, ?, ?, 'Opened', 'Medium', ?, NOW())
             ");
             $stmt->execute([
                 $complaint_id,
@@ -77,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $title,
                 $description,
                 $location,
-                $photo_path
+                $photo_path,
+                $assigned_authority_id
             ]);
             $inserted_db_id = $db->lastInsertId();
 
@@ -85,35 +90,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hist_stmt = $db->prepare("
                 INSERT INTO complaint_status_history 
                 (complaint_id, from_status, to_status, actor_type, actor_id, actor_name, note)
-                VALUES (?, NULL, 'Opened', 'citizen', ?, ?, 'Issue reported by citizen.')
+                VALUES (?, NULL, 'Opened', 'citizen', ?, ?, ?)
             ");
+            $hist_note = "Issue reported by citizen and automatically routed to {$assigned_authority['department']} based on category '{$category}'.";
             $hist_stmt->execute([
                 $inserted_db_id,
                 $citizen_id,
-                $_SESSION['citizen_name'] ?? 'Citizen'
+                $_SESSION['citizen_name'] ?? 'Citizen',
+                $hist_note
             ]);
 
             // Create notification for citizen
             NotificationService::notifyCitizen(
                 $citizen_id,
                 $inserted_db_id,
-                'Complaint Submitted',
-                "Your complaint {$complaint_id} regarding '{$title}' has been registered.",
+                'Complaint Submitted & Assigned',
+                "Your complaint {$complaint_id} has been registered and automatically routed to {$assigned_authority['department']}.",
                 'submitted'
             );
+
+            // Notify the assigned authority immediately
+            if ($assigned_authority_id) {
+                NotificationService::notifyAuthority(
+                    $assigned_authority_id,
+                    $inserted_db_id,
+                    'New Issue Assigned (Automatic Routing)',
+                    "New complaint {$complaint_id} ({$category}) has been automatically routed to your department for resolution.",
+                    'complaint_assigned'
+                );
+            }
 
             // Notify administrators
             NotificationService::notifyAdmins(
                 $inserted_db_id,
                 'New Complaint Registered',
-                "New issue {$complaint_id} reported in category '{$category}'.",
+                "New issue {$complaint_id} reported in category '{$category}' (Assigned to: {$assigned_authority['department']}).",
                 'submitted'
             );
 
             $db->commit();
 
-            flash('success', "Complaint submitted successfully! Your tracking ID is: {$complaint_id}");
-            redirect('dashboard.php');
+            flash('success', "Complaint {$complaint_id} submitted! Automatically assigned to {$assigned_authority['department']}. Log in as the authority below to inspect and solve this issue.");
+            redirect('authority_login.php?dept=' . ($assigned_authority_id ?? 1) . '&ref=' . urlencode($complaint_id));
         } catch (Exception $e) {
             $db->rollBack();
             $errors[] = 'Database error while saving your complaint: ' . (APP_DEBUG ? $e->getMessage() : 'Please try again.');

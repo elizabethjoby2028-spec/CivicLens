@@ -68,20 +68,6 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div style="max-width: 480px; margin: 2rem auto;">
-    <?php if ($admin_count === 0): ?>
-        <div class="alert alert-info" style="margin-bottom: 1.5rem;">
-            <div>
-                <strong>First-time Setup Required:</strong>
-                <p style="margin: 0.35rem 0 0.5rem 0; font-size: 0.9rem;">
-                    No administrator accounts currently exist in the database.
-                </p>
-                <a href="<?= url('setup_admin.php') ?>" class="btn btn-primary btn-sm">
-                    Provision Initial Superadmin &rarr;
-                </a>
-            </div>
-        </div>
-    <?php endif; ?>
-
     <div class="card" style="border-top: 4px solid var(--primary-navy);">
         <div class="card-header" style="text-align: center; display: block;">
             <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🛡️</div>

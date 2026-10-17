@@ -54,11 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                     $tracking_token = generate_tracking_credential();
                     $token_hash = hash_tracking_credential($tracking_token);
 
+                    // Automatically route to matching municipal authority
+                    $assigned_auth = get_authority_for_category($draft['category']);
+                    $assigned_auth_id = $assigned_auth ? (int)$assigned_auth['id'] : null;
+
                     // Insert anonymous complaint
                     $stmt = $db->prepare("
                         INSERT INTO complaints 
-                        (complaint_id, citizen_id, is_anonymous, anonymous_tracking_hash, payment_id, category, title, description, location, photo_path, status, priority)
-                        VALUES (?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, 'Opened', 'Medium')
+                        (complaint_id, citizen_id, is_anonymous, anonymous_tracking_hash, payment_id, category, title, description, location, photo_path, status, priority, assigned_authority_id, assigned_at)
+                        VALUES (?, NULL, 1, ?, ?, ?, ?, ?, ?, ?, 'Opened', 'Medium', ?, NOW())
                     ");
                     $stmt->execute([
                         $complaint_id,
@@ -68,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                         $draft['title'],
                         $draft['description'],
                         $draft['location'],
-                        $draft['photo_path']
+                        $draft['photo_path'],
+                        $assigned_auth_id
                     ]);
                     $complaint_db_id = $db->lastInsertId();
 
@@ -76,9 +81,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                     $hist = $db->prepare("
                         INSERT INTO complaint_status_history 
                         (complaint_id, from_status, to_status, actor_type, actor_id, actor_name, note)
-                        VALUES (?, NULL, 'Opened', 'anonymous_user', NULL, 'Anonymous Complainant', 'Anonymous report submitted with verified ₹9 payment.')
+                        VALUES (?, NULL, 'Opened', 'anonymous_user', NULL, 'Anonymous Complainant', ?)
                     ");
-                    $hist->execute([$complaint_db_id]);
+                    $note = "Anonymous report submitted with verified ₹9 payment. Automatically routed to {$assigned_auth['department']} based on category.";
+                    $hist->execute([$complaint_db_id, $note]);
+
+                    if ($assigned_auth_id) {
+                        NotificationService::notifyAuthority(
+                            $assigned_auth_id,
+                            $complaint_db_id,
+                            'New Anonymous Complaint Assigned',
+                            "New anonymous report {$complaint_id} ({$draft['category']}) has been automatically routed to your department.",
+                            'complaint_assigned'
+                        );
+                    }
 
                     // Notify administrators
                     NotificationService::notifyAdmins(
