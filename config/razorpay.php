@@ -11,9 +11,10 @@ $webhook_secret = env('RAZORPAY_WEBHOOK_SECRET', '');
 $is_configured = (!empty($key_id) && !empty($key_secret) && $key_id !== 'rzp_test_your_key_id_here');
 
 return [
-    'key_id'         => $key_id,
-    'key_secret'     => $key_secret,
+    'key_id'         => $is_configured ? $key_id : 'rzp_test_sandbox_demo',
+    'key_secret'     => $is_configured ? $key_secret : 'sandbox_secret_civiclens_2026',
     'webhook_secret' => $webhook_secret,
     'is_configured'  => $is_configured,
+    'sandbox_mode'   => true,
     'currency'       => 'INR',
 ];

@@ -46,7 +46,7 @@ class PaymentService {
         $orderReference = 'ORD-' . strtoupper(substr(bin2hex(random_bytes(6)), 0, 10));
         $razorpayOrderId = null;
 
-        // If Razorpay is configured, create order via Razorpay REST API
+        // If Razorpay is configured, create order via Razorpay REST API; otherwise create sandbox order ID
         if (self::isConfigured()) {
             $apiOrder = self::callRazorpayCreateOrder($amount, $orderReference);
             if ($apiOrder['success']) {
@@ -57,6 +57,8 @@ class PaymentService {
                     'error'   => 'Razorpay Order Generation Failed: ' . $apiOrder['error']
                 ];
             }
+        } else {
+            $razorpayOrderId = 'order_sandbox_' . substr(bin2hex(random_bytes(8)), 0, 14);
         }
 
         // Insert into database

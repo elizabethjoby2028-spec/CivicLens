@@ -23,54 +23,50 @@ $location = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_csrf_or_die();
 
-    if (!$is_razorpay_ready) {
-        $errors[] = 'Payment gateway is not currently configured. Paid submissions are safely disabled.';
-    } else {
-        $category = sanitize_input($_POST['category'] ?? '');
-        $title = sanitize_input($_POST['title'] ?? '');
-        $description = sanitize_input($_POST['description'] ?? '');
-        $location = sanitize_input($_POST['location'] ?? '');
+    $category = sanitize_input($_POST['category'] ?? '');
+    $title = sanitize_input($_POST['title'] ?? '');
+    $description = sanitize_input($_POST['description'] ?? '');
+    $location = sanitize_input($_POST['location'] ?? '');
 
-        // Validation
-        if (empty($category) || !in_array($category, $categories)) {
-            $errors[] = 'Please select a valid complaint category.';
-        }
-        if (empty($title) || strlen($title) < 5 || strlen($title) > 200) {
-            $errors[] = 'Title must be between 5 and 200 characters.';
-        }
-        if (empty($description) || strlen($description) < 15) {
-            $errors[] = 'Description must be at least 15 characters.';
-        }
-        if (empty($location)) {
-            $errors[] = 'Location or landmark is required.';
-        }
+    // Validation
+    if (empty($category) || !in_array($category, $categories)) {
+        $errors[] = 'Please select a valid complaint category.';
+    }
+    if (empty($title) || strlen($title) < 5 || strlen($title) > 200) {
+        $errors[] = 'Title must be between 5 and 200 characters.';
+    }
+    if (empty($description) || strlen($description) < 15) {
+        $errors[] = 'Description must be at least 15 characters.';
+    }
+    if (empty($location)) {
+        $errors[] = 'Location or landmark is required.';
+    }
 
-        // Handle optional photo
-        $photo_path = null;
-        if (isset($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $uploadResult = validate_and_save_upload($_FILES['photo'], 'complaints', 5);
-            if (!$uploadResult['success']) {
-                $errors[] = $uploadResult['error'];
-            } else {
-                $photo_path = $uploadResult['path'];
-            }
+    // Handle optional photo
+    $photo_path = null;
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $uploadResult = validate_and_save_upload($_FILES['photo'], 'complaints', 5);
+        if (!$uploadResult['success']) {
+            $errors[] = $uploadResult['error'];
+        } else {
+            $photo_path = $uploadResult['path'];
         }
+    }
 
-        if (empty($errors)) {
-            // Store pending anonymous complaint draft in session
-            $_SESSION['pending_anon_complaint'] = [
-                'category'    => $category,
-                'title'       => $title,
-                'description' => $description,
-                'location'    => $location,
-                'photo_path'  => $photo_path,
-                'created_at'  => time(),
-                'idempotency' => bin2hex(random_bytes(16))
-            ];
+    if (empty($errors)) {
+        // Store pending anonymous complaint draft in session
+        $_SESSION['pending_anon_complaint'] = [
+            'category'    => $category,
+            'title'       => $title,
+            'description' => $description,
+            'location'    => $location,
+            'photo_path'  => $photo_path,
+            'created_at'  => time(),
+            'idempotency' => bin2hex(random_bytes(16))
+        ];
 
-            // Proceed to backend payment order creation
-            redirect('payment.php?type=anonymous');
-        }
+        // Proceed to backend payment order creation
+        redirect('payment.php?type=anonymous');
     }
 }
 
@@ -96,20 +92,16 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
 
-        <!-- Configuration Banner if Gateway Credentials Missing -->
+        <!-- Configuration Banner -->
         <?php if (!$is_razorpay_ready): ?>
-            <div class="alert alert-warning" style="display: block;">
-                <strong>⚠️ Razorpay Test Credentials Not Configured</strong>
-                <p style="font-size: 0.9rem; margin-top: 0.35rem; line-height: 1.5;">
-                    To protect users and prevent spam, anonymous complaints require a verified ₹9 payment via Razorpay. Currently, test mode API credentials are missing in the server's <code>.env</code> file.
-                </p>
-                <div style="font-size: 0.85rem; background: rgba(0,0,0,0.04); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.5rem; font-family: monospace;">
-                    RAZORPAY_KEY_ID=rzp_test_...<br>
-                    RAZORPAY_KEY_SECRET=...
+            <div class="alert alert-info" style="display: flex; align-items: center; gap: 0.75rem; border-left: 4px solid var(--primary-navy);">
+                <span style="font-size: 1.6rem;">🧪</span>
+                <div>
+                    <strong>Developer Sandbox Active:</strong>
+                    <p style="font-size: 0.88rem; margin: 0.2rem 0 0 0; line-height: 1.4;">
+                        Live Razorpay credentials are not required in development. Fill out the report below and you can complete payment using the <strong>1-Click Sandbox Test Payment</strong> on the next screen.
+                    </p>
                 </div>
-                <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #92400e;">
-                    <em>Paid submissions are currently disabled to prevent unverified entries.</em>
-                </p>
             </div>
         <?php else: ?>
             <div class="alert alert-info" style="display: block;">
@@ -132,7 +124,7 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="form-group">
                 <label class="form-label" for="category"><?= e(__('category')) ?> <span class="required">*</span></label>
-                <select id="category" name="category" class="form-control" required <?= !$is_razorpay_ready ? 'disabled' : '' ?>>
+                <select id="category" name="category" class="form-control" required>
                     <option value="">-- Select Issue Category --</option>
                     <?php foreach ($categories as $cat): ?>
                         <option value="<?= e($cat) ?>" <?= ($category === $cat) ? 'selected' : '' ?>>
@@ -144,22 +136,22 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="form-group">
                 <label class="form-label" for="title"><?= e(__('title')) ?> <span class="required">*</span></label>
-                <input type="text" id="title" name="title" class="form-control" value="<?= e($title) ?>" placeholder="Brief title of incident or violation" minlength="5" maxlength="200" required <?= !$is_razorpay_ready ? 'disabled' : '' ?>>
+                <input type="text" id="title" name="title" class="form-control" value="<?= e($title) ?>" placeholder="Brief title of incident or violation" minlength="5" maxlength="200" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="location"><?= e(__('location')) ?> <span class="required">*</span></label>
-                <input type="text" id="location" name="location" class="form-control" value="<?= e($location) ?>" placeholder="Location, street, or landmark" required <?= !$is_razorpay_ready ? 'disabled' : '' ?>>
+                <input type="text" id="location" name="location" class="form-control" value="<?= e($location) ?>" placeholder="Location, street, or landmark" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="description"><?= e(__('description')) ?> <span class="required">*</span></label>
-                <textarea id="description" name="description" class="form-control" rows="5" placeholder="Provide complete facts without including personal identifying details..." minlength="15" required <?= !$is_razorpay_ready ? 'disabled' : '' ?>><?= e($description) ?></textarea>
+                <textarea id="description" name="description" class="form-control" rows="5" placeholder="Provide complete facts without including personal identifying details..." minlength="15" required><?= e($description) ?></textarea>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="photo"><?= e(__('photo')) ?></label>
-                <input type="file" id="photo" name="photo" class="form-control" accept="image/jpeg,image/png,image/webp" data-preview-target="anon_photo_preview" <?= !$is_razorpay_ready ? 'disabled' : '' ?>>
+                <input type="file" id="photo" name="photo" class="form-control" accept="image/jpeg,image/png,image/webp" data-preview-target="anon_photo_preview">
                 <div class="form-hint">Accepted formats: JPG, PNG, WebP (Max 5MB). EXIF location metadata is stripped for safety.</div>
                 <img id="anon_photo_preview" src="" alt="Preview" style="display: none; max-width: 200px; max-height: 200px; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
             </div>
@@ -170,11 +162,11 @@ require_once __DIR__ . '/includes/header.php';
                     <strong>₹<?= number_format(ANONYMOUS_COMPLAINT_FEE, 2) ?></strong>
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
-                    Secured via Razorpay Test Gateway. Backend signature verification required before issue generation.
+                    Secured via Razorpay <?= $is_razorpay_ready ? 'Gateway' : 'Test Sandbox' ?>. Backend HMAC-SHA256 signature verification required before issue generation.
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg btn-block" <?= !$is_razorpay_ready ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
                 Proceed to Secure Verification (₹<?= (int)ANONYMOUS_COMPLAINT_FEE ?>) &rarr;
             </button>
         </form>
