@@ -85,11 +85,17 @@ require_once __DIR__ . '/includes/header.php';
             </button>
         </form>
 
-        <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+        <div style="margin-top: 1rem; text-align: center;">
+            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.8rem; width: 100%; border-style: dashed;" onclick="document.getElementById('email').value='citizen@civiclens.local'; document.getElementById('password').value='Citizen@2026';">
+                👤 Demo Citizen (Click to Fill: citizen@civiclens.local)
+            </button>
+        </div>
+
+        <div style="margin-top: 1.25rem; text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
             Don't have an account yet? <a href="<?= url('register.php') ?>" style="font-weight: 600;">Register Here</a>
         </div>
 
-        <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; text-align: center;">
+        <div style="margin-top: 1.25rem; border-top: 1px solid var(--border-color); padding-top: 1rem; text-align: center;">
             <a href="<?= url('anonymous.php') ?>" style="font-size: 0.85rem; color: var(--text-muted);">
                 Need to submit without logging in? <strong>File Anonymous Report (₹9) &rarr;</strong>
             </a>
