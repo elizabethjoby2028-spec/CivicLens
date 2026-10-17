@@ -189,7 +189,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
 
             <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-                <a href="<?= url('track_complaint.php?id=' . urlencode($success_data['complaint_id'])) ?>" class="btn btn-primary btn-lg">
+                <a href="<?= url('track_complaint.php?id=' . urlencode($success_data['complaint_id']) . '&token=' . urlencode($success_data['tracking_token'])) ?>" class="btn btn-primary btn-lg">
                     Track Complaint Now &rarr;
                 </a>
                 <?php if (!empty($success_data['assigned_authority'])): ?>
