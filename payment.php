@@ -111,11 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
 
                     // Set success data for display
                     $success_data = [
-                        'complaint_id'   => $complaint_id,
-                        'tracking_token' => $tracking_token,
-                        'category'       => $draft['category'],
-                        'title'          => $draft['title'],
-                        'payment_id'     => $razorpay_payment_id,
+                        'complaint_id'          => $complaint_id,
+                        'tracking_token'        => $tracking_token,
+                        'category'              => $draft['category'],
+                        'title'                 => $draft['title'],
+                        'payment_id'            => $razorpay_payment_id,
+                        'assigned_authority'    => $assigned_auth,
+                        'assigned_authority_id' => $assigned_auth_id,
                     ];
                 } catch (Exception $e) {
                     $db->rollBack();
@@ -191,10 +193,15 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
 
-            <div style="display: flex; gap: 1rem; justify-content: center;">
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
                 <a href="<?= url('track_complaint.php?id=' . urlencode($success_data['complaint_id'])) ?>" class="btn btn-primary btn-lg">
                     Track Complaint Now &rarr;
                 </a>
+                <?php if (!empty($success_data['assigned_authority'])): ?>
+                    <a href="<?= url('authority_login.php?dept=' . (int)$success_data['assigned_authority_id'] . '&ref=' . urlencode($success_data['complaint_id'])) ?>" class="btn btn-outline btn-lg" style="border-color: var(--primary-navy); color: var(--primary-navy);">
+                        🏛️ Solve as <?= e($success_data['assigned_authority']['department']) ?> &rarr;
+                    </a>
+                <?php endif; ?>
                 <a href="<?= url('portal.php') ?>" class="btn btn-secondary btn-lg">
                     Return to Portal
                 </a>
