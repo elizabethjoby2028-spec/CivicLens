@@ -73,6 +73,7 @@ if (is_citizen_logged_in()) {
                     <li><a href="<?= url('portal.php') ?>" class="nav-link <?= ($current_page === 'portal.php') ? 'active' : '' ?>"><?= e(__('citizen_portal')) ?></a></li>
                     <li><a href="<?= url('track_complaint.php') ?>" class="nav-link <?= ($current_page === 'track_complaint.php') ? 'active' : '' ?>"><?= e(__('track_complaint')) ?></a></li>
                     <li><a href="<?= url('anonymous.php') ?>" class="nav-link <?= ($current_page === 'anonymous.php') ? 'active' : '' ?>"><?= e(__('anonymous_complaint')) ?></a></li>
+                    <li><a href="<?= url('authority_login.php') ?>" class="nav-link <?= ($current_page === 'authority_login.php') ? 'active' : '' ?>">🏛️ Authority</a></li>
                 <?php endif; ?>
             </ul>
         </nav>
